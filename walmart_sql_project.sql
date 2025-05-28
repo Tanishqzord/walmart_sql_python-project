@@ -72,6 +72,80 @@ order by count(*) desc;
  min(rating) as min_rating
  from walmart
  group by 1,2;
+
+-- problem -6 What is the total profit for each category, ranked from highest to lowest?
+
+select category,
+sum(total) as total_revenue,
+sum(total* profit_margin) as profit
+from walmart
+group by 1
+order by 3 desc;
+
+-- problem -7 What is the most frequently used payment method in each branch?
+
+select *
+from(
+	select branch ,payment_method,
+    count(*) as total_payments,
+    rank() over(partition by branch order by count(*) desc) as rnk
+from walmart
+group by branch , payment_method
+) as ranked 
+where rnk=1;
+
+-- problem 8 How many transactions occur in each shift (Morning, Afternoon, Evening)
+-- across branches?
+
+SELECT 
+    branch,
+    CASE 
+        WHEN HOUR(STR_TO_DATE(time, '%H:%i:%s')) BETWEEN 6 AND 11 THEN 'Morning'
+        WHEN HOUR(STR_TO_DATE(time, '%H:%i:%s')) BETWEEN 12 AND 17 THEN 'Afternoon'
+        ELSE 'Evening'
+    END AS shift,
+    COUNT(*) AS total_transactions
+FROM walmart
+GROUP BY branch, shift
+ORDER BY branch,total_transactions desc;
+
+
+-- problem -9 Which 5 branches with the highest decrease ratio in 
+-- revenue compare to last year (current year= 2023 and last year 2022) ?
+
+-- 2022 --
+WITH revenue_2022 AS (
+    SELECT 
+        branch,
+        SUM(total) AS revenue
+    FROM walmart
+    WHERE YEAR(STR_TO_DATE(date, '%d/%m/%y')) = 2022
+    GROUP BY branch
+),
+-- 2023--
+revenue_2023 AS (
+    SELECT 
+        branch,
+        SUM(total) AS revenue
+    FROM walmart
+    WHERE YEAR(STR_TO_DATE(date, '%d/%m/%y')) = 2023
+    GROUP BY branch
+)
+SELECT 
+    r22.branch,
+    r22.revenue AS last_year_revenue,
+    r23.revenue AS current_year_revenue,
+    ROUND((r22.revenue - r23.revenue) / r22.revenue * 100, 2) AS rev_dec_ratio
+FROM 
+    revenue_2022 AS r22
+JOIN 
+    revenue_2023 AS r23 
+    ON r22.branch = r23.branch
+WHERE 
+    r22.revenue > r23.revenue
+ORDER BY 
+    rev_dec_ratio DESC
+LIMIT 5;
  
  
 
